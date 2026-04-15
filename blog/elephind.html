@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recovering What LLM Agents Forget - Ahmed F. AbouElhamayed</title>
+  <meta name="description" content="How a simple BM25 retrieval layer recovers a large share of information lost when LLM agents compact their context.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .blog-post-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+    }
+    .blog-post-content th,
+    .blog-post-content td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--color-border);
+      text-align: left;
+    }
+    .blog-post-content th {
+      background: var(--color-bg-alt);
+      font-weight: 600;
+    }
+    .blog-post-content td:last-child,
+    .blog-post-content th:last-child {
+      text-align: right;
+    }
+    .blog-post-content td:first-child,
+    .blog-post-content th:first-child {
+      text-align: left;
+    }
+    .blog-post-content .footnotes {
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.88rem;
+      color: var(--color-text-secondary);
+    }
+    .blog-post-content .footnotes ol {
+      padding-left: 1.25rem;
+    }
+    .blog-post-content .footnotes li {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+    }
+    .blog-post-content sup a {
+      font-size: 0.75em;
+      margin-left: 1px;
+    }
+    .blog-post-content .note {
+      padding: 0.75rem 1rem;
+      background: var(--color-bg-alt);
+      border-left: 3px solid var(--color-accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 1.25rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--color-text-secondary);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="../index.html" class="nav-brand">Ahmed F. AbouElhamayed</a>
+      <div class="nav-right">
+        <ul class="nav-links">
+          <li><a href="../index.html">About</a></li>
+          <li><a href="../publications.html">Publications</a></li>
+          <li><a href="../cv.html">CV</a></li>
+          <li><a href="index.html" class="active">Blog</a></li>
+        </ul>
+        <button class="theme-toggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
+        <button class="hamburger" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page-content">
+    <div class="container">
+
+      <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to blog</a>
+
+      <article>
+        <header class="blog-post-header">
+          <h1 class="blog-post-title">Recovering What LLM Agents Forget: Persistent Conversation Memory via Lightweight Retrieval</h1>
+          <div class="blog-post-meta">
+            <time>April 14, 2026</time>
+          </div>
+        </header>
+
+        <div class="blog-post-content">
+
+          <p><em>How a simple BM25 retrieval layer recovers a large share of information lost when LLM agents compact their context.</em></p>
+
+          <hr style="margin:1.5rem 0; border:none; border-top:1px solid var(--color-border);">
+
+          <h2>The Problem: Context Compaction Destroys Information</h2>
+
+          <p>
+            LLM-based agents maintain a running conversation with the user across hundreds of turns. But transformer context windows are finite. When the conversation grows too long, some agents resort to <em>compacting</em> &mdash; replacing older turns with a compressed summary to free up context space.
+          </p>
+
+          <p>
+            This is a lossy operation. The compaction summary preserves high-level themes and decisions, but drops specific details: exact configuration values, precise error messages, particular file paths discussed twenty minutes ago. When the agent later needs those details, they&rsquo;re gone.
+          </p>
+
+          <p>
+            The question is: <strong>how much information is actually lost during compaction, and can a simple retrieval system recover it?</strong>
+          </p>
+
+          <p>
+            We built <strong>Elephind</strong>, a lightweight persistent memory system for LLM agents, and evaluated it against the LoCoMo benchmark &mdash; a standard academic dataset for long-term conversational memory. The results show that even a basic BM25 retrieval layer recovers a substantial share of information lost to compaction, with no embeddings, no vector database, and no fine-tuning required.
+          </p>
+
+          <h2>Approach: Append-Only Logs + BM25 Retrieval</h2>
+
+          <p>Elephind&rsquo;s design is deliberately minimal:</p>
+
+          <ol>
+            <li><strong>Persist</strong>: Every conversation turn is appended to a plain-text Markdown log file, indexed by session.</li>
+            <li><strong>Detect</strong>: When the host agent signals a compaction event, Elephind ensures all turns are saved beforehand.</li>
+            <li><strong>Search</strong>: When the agent needs a detail from a compacted region, it calls <code>elephind_search(query)</code>, which runs BM25 keyword search over all stored turns.</li>
+            <li><strong>Retrieve</strong>: The top-k matching turns are returned as formatted text, re-injecting the lost context.</li>
+          </ol>
+
+          <p>
+            No embedding models. No vector stores. No GPU. The entire system is ~500 lines of Python using <code>rank_bm25</code>, <code>pydantic</code>, and plain file I/O. Search latency is under 10ms per query.
+          </p>
+
+          <h2>Evaluation: The LoCoMo Benchmark</h2>
+
+          <p>
+            We use the <strong>LoCoMo</strong> (Long-term Conversational Memory) benchmark introduced by Maharana et al. at ACL 2024.<sup><a href="#fn1" id="ref1">1</a></sup> LoCoMo is specifically designed to test whether systems can recall facts from long multi-session conversations.
+          </p>
+
+          <h3>Dataset</h3>
+
+          <p>LoCoMo has 10 conversations, each roughly 600 turns and about 16K tokens, with the aggregate counts below.<sup><a href="#fn5" id="ref5">5</a></sup></p>
+
+          <table>
+            <thead>
+              <tr><th>Property</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Conversations</td><td>10</td></tr>
+              <tr><td>Total sessions</td><td>272</td></tr>
+              <tr><td>Total dialog turns</td><td>5,882</td></tr>
+              <tr><td>Total words</td><td>133,772</td></tr>
+              <tr><td>QA pairs (with ground truth)</td><td>1,540</td></tr>
+              <tr><td>QA categories (reported here)</td><td>Single-hop, Multi-hop, Open-domain</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            Each conversation spans 19&ndash;35 sessions between two speakers discussing their lives over several months. The conversations are grounded on time-aware event graphs and human-verified. Crucially, LoCoMo provides:
+          </p>
+
+          <ul>
+            <li><strong>Per-session summaries</strong> written by the dataset authors &mdash; these serve as our compaction output.</li>
+            <li><strong>1,540 QA pairs</strong> across 4 categories, each with a ground-truth answer and evidence pointers to specific dialog turns.</li>
+            <li><strong>Evidence dialog IDs</strong> identifying exactly which turns contain the information needed to answer each question.</li>
+          </ul>
+
+          <p>
+            This lets us directly measure whether retrieval recovers the evidence turns that compaction discarded.
+          </p>
+
+          <p>
+            In this post, we report category-level and aggregate metrics for single-hop, multi-hop, and open-domain QA. One additional LoCoMo QA type is omitted because its gold answers depend on calendar-date normalization in summaries rather than verbatim dialog phrasing.
+          </p>
+
+          <h3>Experimental Design</h3>
+
+          <p>We compare three conditions:</p>
+
+          <table>
+            <thead>
+              <tr><th>Condition</th><th>Available Context</th><th>Simulates</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Vanilla</strong></td><td>Session summaries only (~20% of original text)</td><td>Standard post-compaction state</td></tr>
+              <tr><td><strong>Elephind</strong></td><td>Session summaries + top-<em>k</em> retrieved original turns</td><td>Post-compaction with retrieval</td></tr>
+              <tr><td><strong>Oracle</strong></td><td>Full original conversation text</td><td>Upper bound (no compaction)</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            <strong>Vanilla</strong> represents what a standard LLM agent has after compaction: the summaries replace the original conversation. This is the baseline &mdash; no persistent memory, no retrieval.
+          </p>
+
+          <p>
+            <strong>Elephind</strong> adds retrieval on top: for each question, we run <code>elephind_search(question)</code> and append the top-k retrieved original turns to the summary context. This simulates an agent that uses Elephind to recall compacted details.
+          </p>
+
+          <p>
+            <strong>Oracle</strong> provides the full, uncompacted conversation. This is the ceiling &mdash; the best possible performance if no information were ever lost.<sup><a href="#fn6" id="ref6">6</a></sup>
+          </p>
+
+          <h3>Metric: Answer Containment Rate (ACR)</h3>
+
+          <p>For each QA pair, we check whether the ground-truth answer can be found in the available context. We use a two-pass approach:</p>
+
+          <ol>
+            <li><strong>Exact substring match</strong> &mdash; catches numbers, proper nouns, and precise phrases.</li>
+            <li><strong>Token overlap</strong> (75% threshold) &mdash; catches paraphrased answers where the key content words appear in the context even if the exact phrasing differs.</li>
+          </ol>
+
+          <p>A QA pair is scored as &ldquo;contained&rdquo; if either pass succeeds. This is a conservative, fully automated metric that requires no LLM judge.</p>
+
+          <h2>Results</h2>
+
+          <h3>Main Results: Answer Containment Rate by Category</h3>
+
+          <table>
+            <thead>
+              <tr><th>Category</th><th>N</th><th>Vanilla</th><th>Elephind (k=5)</th><th>Oracle</th><th>Gain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Single-hop</td><td>282</td><td>50.7%</td><td>54.6%</td><td>82.6%</td><td>+3.9%</td></tr>
+              <tr><td>Multi-hop</td><td>96</td><td>16.7%</td><td>20.8%</td><td>30.2%</td><td>+4.2%</td></tr>
+              <tr><td>Open-domain</td><td>841</td><td>50.2%</td><td>68.5%</td><td>93.0%</td><td><strong>+18.3%</strong></td></tr>
+              <tr><td><strong>Reported categories total</strong></td><td><strong>1,219</strong></td><td><strong>47.7%</strong></td><td><strong>61.5%</strong></td><td><strong>85.6%</strong></td><td><strong>+13.9%</strong></td></tr>
+            </tbody>
+          </table>
+
+          <h3>Headline Numbers</h3>
+
+          <table>
+            <thead>
+              <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Absolute gain over Vanilla</td><td><strong>+13.9%</strong></td></tr>
+              <tr><td>Relative improvement</td><td><strong>+29.1%</strong></td></tr>
+              <tr><td>Gap closed (Vanilla &rarr; Oracle)</td><td><strong>36.4%</strong></td></tr>
+              <tr><td>Evidence Retrieval Rate (top-5, all questions)</td><td><strong>36.9%</strong></td></tr>
+              <tr><td>Search latency</td><td><strong>9.7 ms/query</strong></td></tr>
+            </tbody>
+          </table>
+
+          <h3>Top-k Sensitivity</h3>
+
+          <p>Increasing k improves evidence recall, but we use k=5 as the default because it balances retrieval quality against context budget.</p>
+
+          <h3>End-to-End LLM Evaluation</h3>
+
+          <p>
+            The ACR metric measures whether the right information is <em>available</em> in context. To measure whether a model actually <em>uses</em> that information to produce correct answers, we run a full end-to-end evaluation: <strong>Qwen2.5-7B-Instruct</strong> reads the context, generates an answer, and we score against the ground truth using standard SQuAD-style F1 and Exact Match (EM).
+          </p>
+
+          <p><strong>F1 Score by Category (Qwen2.5-7B-Instruct)</strong></p>
+
+          <table>
+            <thead>
+              <tr><th>Category</th><th>N</th><th>Vanilla</th><th>Elephind</th><th>Gain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Single-hop</td><td>282</td><td>26.8%</td><td>22.5%</td><td>-4.3%</td></tr>
+              <tr><td>Multi-hop</td><td>96</td><td>8.4%</td><td>11.8%</td><td>+3.5%</td></tr>
+              <tr><td>Open-domain</td><td>841</td><td>27.3%</td><td>42.5%</td><td><strong>+15.2%</strong></td></tr>
+              <tr><td><strong>Reported categories total</strong></td><td><strong>1,219</strong></td><td><strong>25.7%</strong></td><td><strong>35.5%</strong></td><td><strong>+9.8%</strong></td></tr>
+            </tbody>
+          </table>
+
+          <p><strong>Exact Match by Category</strong></p>
+
+          <table>
+            <thead>
+              <tr><th>Category</th><th>N</th><th>Vanilla</th><th>Elephind</th><th>Gain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Single-hop</td><td>282</td><td>7.1%</td><td>5.7%</td><td>-1.4%</td></tr>
+              <tr><td>Multi-hop</td><td>96</td><td>4.2%</td><td>6.2%</td><td>+2.1%</td></tr>
+              <tr><td>Open-domain</td><td>841</td><td>14.0%</td><td>25.0%</td><td><strong>+10.9%</strong></td></tr>
+              <tr><td><strong>Reported categories total</strong></td><td><strong>1,219</strong></td><td><strong>11.6%</strong></td><td><strong>19.1%</strong></td><td><strong>+7.4%</strong></td></tr>
+            </tbody>
+          </table>
+
+          <table>
+            <thead>
+              <tr><th>LLM Metric</th><th>Vanilla</th><th>Elephind</th><th>Gain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>F1</strong></td><td>25.7%</td><td><strong>35.5%</strong></td><td><strong>+9.8%</strong> (+38.0% relative)</td></tr>
+              <tr><td><strong>Exact Match</strong></td><td>11.6%</td><td><strong>19.1%</strong></td><td><strong>+7.4%</strong> (+63.8% relative)</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            The LLM evaluation confirms the pattern seen in the ACR analysis: <strong>open-domain questions benefit the most</strong> (+15.2% F1, +10.9% EM), while single-hop questions see a small decrease. Overall, Elephind delivers a <strong>+38.0% relative improvement in F1</strong> and a <strong>+63.8% relative improvement in Exact Match</strong> over the Vanilla baseline on the reported categories.
+          </p>
+
+          <p>
+            Notably, the single-hop category shows a small decrease. This happens because the additional retrieved turns can introduce noise for questions where the summary already contains a good answer &mdash; the model occasionally gets confused by extra context. This suggests that a smarter retrieval policy (retrieve only when the summary is insufficient) could further improve results, but even the naive &ldquo;always retrieve&rdquo; approach delivers strong overall gains.
+          </p>
+
+          <h2>Analysis</h2>
+
+          <h3>Where Elephind Helps Most</h3>
+
+          <p>
+            <strong>Open-domain questions</strong> see the largest gain (+18.3%). These questions ask about topics discussed in the conversation using distinctive vocabulary &mdash; exactly the scenario where BM25 excels. When the user asks &ldquo;What did the charity race raise awareness for?&rdquo;, BM25 matches &ldquo;charity&rdquo; and &ldquo;race&rdquo; against the original turn, even though the compaction summary might only mention &ldquo;community events.&rdquo;
+          </p>
+
+          <p>
+            <strong>Single-hop questions</strong> (+3.9%) benefit modestly. Many single-hop answers are already captured in the session summaries, limiting the room for improvement.
+          </p>
+
+          <p>
+            <strong>Multi-hop questions</strong> (+4.2%) see limited gains because answering them requires synthesizing information from multiple turns across different sessions &mdash; a single BM25 query may not retrieve all the pieces.
+          </p>
+
+          <h3>Reporting Scope</h3>
+
+          <p>
+            This post excludes the temporal LoCoMo QA type whose gold answers depend on explicit calendar-date normalization in summaries that is often absent from verbatim dialog turns. That mismatch can make uncompacted transcripts look artificially worse under string-containment metrics, so we focus on other categories where containment is a fair proxy for memory recovery.
+          </p>
+
+          <p>
+            We also note a February 2026 independent audit reporting 99 incorrect gold answers out of 1,540 (6.4%), which implies an effective dataset ceiling of about 93.6%.<sup><a href="#fn6" id="ref6b">6</a></sup> We expect this to have minimal impact on the relative Vanilla vs. Elephind gains reported here because both conditions are evaluated against the same labels.
+          </p>
+
+          <h3>BM25&rsquo;s Vocabulary Gap</h3>
+
+          <p>
+            Evidence Retrieval Rate tops out at 52.8% even at k=20. The remaining 47% represents cases where BM25 cannot find the right turn due to vocabulary mismatch &mdash; the question and the evidence turn share no distinctive keywords. For example, a question asking &ldquo;What hobby did Caroline pick up?&rdquo; might not match a turn that says &ldquo;I started painting watercolors last month.&rdquo; Bridging this gap would require semantic search (embeddings), which we deliberately excluded from this study.
+          </p>
+
+          <h3>Compaction Summary Quality Matters</h3>
+
+          <p>
+            The LoCoMo session summaries are well-written &mdash; they capture major events, decisions, and factual details, averaging 20% of the original text length. Our Vanilla baseline of 47.7% on the reported categories reflects this quality. With lower-quality summaries (as might be produced by fast automatic compaction), we would expect the Vanilla baseline to be lower and Elephind&rsquo;s relative advantage to increase.
+          </p>
+
+          <h2>Limitations</h2>
+
+          <p>
+            <strong>Answer matching in ACR is approximate.</strong> Our token-overlap metric is a lower bound &mdash; it misses cases where the answer requires inference rather than surface-level text matching. An LLM-based judge (as used in the original LoCoMo evaluation) would likely show different absolute numbers, though the relative gains should hold.
+          </p>
+
+          <p>
+            <strong>BM25 has a hard ceiling.</strong> Pure keyword search cannot handle vocabulary mismatch or questions requiring semantic understanding. Adding an embedding-based reranker or hybrid retrieval would address this, at the cost of additional infrastructure.
+          </p>
+
+          <p>
+            <strong>Dataset scale.</strong> LoCoMo contains 10 conversations with 1,540 QA pairs. While this is sufficient for detecting the effect sizes we observe, larger-scale evaluation would strengthen the conclusions.
+          </p>
+
+          <p>
+            <strong>Single-model end-to-end evaluation.</strong> We report answer-generation results with Qwen2.5-7B-Instruct only. Additional reader models and prompting strategies would improve confidence in generalization.
+          </p>
+
+          <h2>Reproducing These Results</h2>
+
+          <p>The benchmark is fully self-contained and requires no API keys or GPUs:</p>
+
+<pre><code>git clone https://github.com/abouelhamayed/elephind.git
+cd elephind
+pip install -e ".[dev]"
+python benchmarks/locomo_bench.py</code></pre>
+
+          <p>
+            The LoCoMo dataset is included in the repository under <code>benchmarks/conversations/locomo10.json</code> (CC BY-NC 4.0 license).<sup><a href="#fn5" id="ref5b">5</a></sup> Total runtime is under 30 seconds on a laptop.
+          </p>
+
+          <h2>Conclusion</h2>
+
+          <p>A simple BM25 retrieval layer over persisted conversation logs recovers a substantial fraction of information lost during context compaction. On the reported LoCoMo categories:</p>
+
+          <ul>
+            <li><strong>Elephind achieves 61.5% Answer Containment Rate</strong>, up from 47.7% with summaries alone &mdash; a <strong>29.1% relative improvement</strong>.</li>
+            <li>The system requires <strong>no embeddings, no vector store, no GPU</strong>, and searches in <strong>under 10ms</strong>.</li>
+          </ul>
+
+          <p>
+            The results suggest that for long-running LLM conversations, which tend to accumulate distinctive keywords like names, places, dates, and domain-specific terms, keyword-based retrieval is a surprisingly effective first line of defense against compaction-induced information loss. Semantic search would further close the remaining gap, but the complexity-to-value ratio of BM25 is hard to beat as a starting point.
+          </p>
+
+          <hr style="margin:1.5rem 0; border:none; border-top:1px solid var(--color-border);">
+
+          <div class="note">
+            Note: Claude Code was used to run experiments and to assist in writing this blog post, under my supervision.
+          </div>
+
+          <div class="footnotes">
+            <h3>References</h3>
+            <ol>
+              <li id="fn1">Maharana, A., Lee, D.-H., Tulyakov, S., Bansal, M., Barbieri, F., &amp; Fang, Y. (2024). <em>Evaluating Very Long-Term Conversational Memory of LLM Agents.</em> Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (ACL 2024). <a href="https://arxiv.org/abs/2402.17753" target="_blank" rel="noopener">arXiv:2402.17753</a> <a href="#ref1">&uarr;</a></li>
+              <li id="fn2">Robertson, S. E., &amp; Zaragoza, H. (2009). <em>The Probabilistic Relevance Framework: BM25 and Beyond.</em> Foundations and Trends in Information Retrieval, 3(4), 333&ndash;389.</li>
+              <li id="fn3">Wu, D., Wang, H., Yu, W., Zhang, Y., Chang, K.-W., &amp; Yu, D. (2024). <em>LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory.</em> ICLR 2025. <a href="https://arxiv.org/abs/2410.10813" target="_blank" rel="noopener">arXiv:2410.10813</a></li>
+              <li id="fn4">Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., &amp; Gonzalez, J. E. (2023). <em>MemGPT: Towards LLMs as Operating Systems.</em> <a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">arXiv:2310.08560</a></li>
+              <li id="fn5">LoCoMo source repository and release metadata: SNAP Research, <em>LoCoMo</em> GitHub repository (README and LICENSE), and LoCoMo paper appendix metadata (ACL 2024, Appendix B). <a href="https://github.com/snap-research/locomo" target="_blank" rel="noopener">github.com/snap-research/locomo</a> <a href="#ref5">&uarr;</a></li>
+              <li id="fn6">Independent LoCoMo audit (February 2026) reporting 99 incorrect answers out of 1,540 (6.4%), implying an approximate effective ceiling of 93.6%. <a href="https://github.com/snap-research/locomo/issues/27" target="_blank" rel="noopener">github.com/snap-research/locomo/issues/27</a> <a href="#ref6">&uarr;</a></li>
+            </ol>
+          </div>
+
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-links">
+        <a href="mailto:afa55@cornell.edu" aria-label="Email"><i class="fas fa-envelope"></i></a>
+        <a href="https://scholar.google.com/citations?user=tzaaYKMAAAAJ&hl=en" target="_blank" rel="noopener" aria-label="Google Scholar"><i class="fas fa-graduation-cap"></i></a>
+        <a href="https://www.linkedin.com/in/aabouelhamayed/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+      </div>
+      <p>&copy; 2026 Ahmed F. AbouElhamayed. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>
