@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Replace-on-Write Memory Doubles Multi-Hop Counterfactual QA Accuracy - Ahmed F. AbouElhamayed</title>
+  <meta name="description" content="A 150-line regex consolidator at ingest time approximately doubles multi-hop FactConsolidation accuracy over an otherwise-identical lossless RAG pipeline.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .blog-post-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+    }
+    .blog-post-content th,
+    .blog-post-content td {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--color-border);
+      text-align: left;
+    }
+    .blog-post-content th {
+      background: var(--color-bg-alt);
+      font-weight: 600;
+    }
+    .blog-post-content .footnotes {
+      margin-top: 2.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--color-border);
+      font-size: 0.88rem;
+      color: var(--color-text-secondary);
+    }
+    .blog-post-content .footnotes ol {
+      padding-left: 1.25rem;
+    }
+    .blog-post-content .footnotes li {
+      margin-bottom: 0.75rem;
+      line-height: 1.6;
+    }
+    .blog-post-content sup a {
+      font-size: 0.75em;
+      margin-left: 1px;
+    }
+    .blog-post-content .note {
+      padding: 0.75rem 1rem;
+      background: var(--color-bg-alt);
+      border-left: 3px solid var(--color-accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      margin: 1.25rem 0;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--color-text-secondary);
+    }
+    .blog-post-content blockquote {
+      border-left: 3px solid var(--color-accent);
+      padding: 0.5rem 1rem;
+      margin: 1.25rem 0;
+      color: var(--color-text-secondary);
+      background: var(--color-bg-alt);
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+    .blog-post-content blockquote p {
+      margin: 0.25rem 0;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="../index.html" class="nav-brand">Ahmed F. AbouElhamayed</a>
+      <div class="nav-right">
+        <ul class="nav-links">
+          <li><a href="../index.html">About</a></li>
+          <li><a href="../publications.html">Publications</a></li>
+          <li><a href="../cv.html">CV</a></li>
+          <li><a href="index.html" class="active">Blog</a></li>
+        </ul>
+        <button class="theme-toggle" aria-label="Toggle dark mode"><i class="fas fa-moon"></i></button>
+        <button class="hamburger" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page-content">
+    <div class="container">
+
+      <a href="index.html" class="back-link"><i class="fas fa-arrow-left"></i> Back to blog</a>
+
+      <article>
+        <header class="blog-post-header">
+          <h1 class="blog-post-title">Replace-on-Write Memory Doubles Multi-Hop Counterfactual QA Accuracy</h1>
+          <div class="blog-post-meta">
+            <time>May 6, 2026</time>
+          </div>
+        </header>
+
+        <div class="blog-post-content">
+
+          <p>
+            Append-only RAG over an agent&rsquo;s observation history is the dominant memory architecture in current agentic systems: every observation is added to a vector or document index, retrieved at query time, and concatenated into the answerer&rsquo;s prompt. We argue against this design point on the basis of a benchmark study on MemoryAgentBench&rsquo;s multi-hop FactConsolidation task. Replacing the lossless ingest with a deterministic, template-based last-write-wins consolidator &mdash; one that drops every fact superseded by a later observation with the same (subject, predicate), with no LLM call at ingest &mdash; improves accuracy from <strong>6.25% &rarr; 12.25% on n = 400 questions across four context-size tiers</strong> (<code>Qwen3-14B-Instruct</code>, BM25 top-5, identical answerer). The win is concentrated at short context (<code>mh_6k</code>: 6% &rarr; 29%, +23 pp absolute) and shrinks at longer context, where retrieval recall becomes the bottleneck. A controlled case study isolates the underlying mechanism: append-only memory exposes the answerer to <em>chain coexistence</em> in the prompt &mdash; both a prior-aligned and a counterfactual answer chain are equally surface-grounded, and the answerer selects on the basis of pretraining co-activation rather than the dataset&rsquo;s intended supersession. Replace-on-write breaks chain coexistence at the simplest possible cost.
+          </p>
+
+          <blockquote>
+            <p><strong>Reproducing.</strong> All code, prompts, and reproduction steps for the result and the case-study ablation are at <a href="https://github.com/abouelhamayed/replace-on-write-rag" target="_blank" rel="noopener">github.com/abouelhamayed/replace-on-write-rag</a>. The README walks through serving the model, running the n = 400 benchmark, and reproducing the &sect;4 ablation in three commands.</p>
+          </blockquote>
+
+          <hr style="margin:1.5rem 0; border:none; border-top:1px solid var(--color-border);">
+
+          <h2>1. Setup</h2>
+
+          <p>
+            <strong>Dataset.</strong> <a href="https://huggingface.co/datasets/ai-hyz/MemoryAgentBench" target="_blank" rel="noopener">MemoryAgentBench</a>&rsquo;s <code>Conflict_Resolution</code> split contains <em>FactConsolidation</em> tasks: synthetic haystacks of <code>&lt;id&gt;. &lt;statement&gt;</code> lines built from MQuAKE counterfactual edit pairs, with gold facts inserted at high fact ids to supersede prior-aligned facts at lower ids about the same entities. We focus on the multi-hop variant (<code>factconsolidation_mh</code>), which requires composing 3 facts to answer. Four context-size tiers (<code>mh_6k</code> &asymp; 26 K chars, <code>mh_32k</code> &asymp; 137 K, <code>mh_64k</code> &asymp; 273 K, <code>mh_262k</code> &asymp; 1.1 M); 100 questions per tier; n = 400. The dataset construction places the gold chain at higher fact ids than any prior-aligned alternative, and the grader rewards the higher chain.
+          </p>
+
+          <p>
+            <strong>Pipeline.</strong> <code>Qwen3-14B-Instruct</code> in BF16 served locally over an OpenAI-compatible HTTP shim, temperature 0, thinking-mode disabled. BM25 (Okapi, <code>k1 = 1.5</code>, <code>b = 0.75</code>) over 4096-character chunks with 256-character overlap, top-5 retrieved. Production answerer prompt: <code>"You answer the user's question using only the retrieved passages. If they don't contain the answer, say 'I don't know'. Be brief."</code> LLM-as-judge for grading.
+          </p>
+
+          <h2>2. Two ingest policies</h2>
+
+          <p>We hold the entire pipeline fixed except the ingest step:</p>
+
+          <ul>
+            <li><strong>Lossless (<code>bm25_rag</code>).</strong> The baseline. The haystack is ingested verbatim into the BM25 index. This is the design point of every &ldquo;RAG over agent history&rdquo; we are aware of.</li>
+            <li><strong>Replace-on-write (<code>lww_consolidated_bm25_rag</code>).</strong> Before chunking, we run a deterministic last-write-wins pass. Each numbered-fact line is matched against 28 relation templates (<code>X is married to Y</code>, <code>The capital of X is Y</code>, <code>X died in the city of Y</code>, <code>The headquarters of X is located in Y</code>, &hellip;). Within each (predicate, subject) group identified by the templates, only the highest-id fact is retained; earlier facts are dropped. Lines that don&rsquo;t match any template pass through unchanged. <strong>No LLM is consulted at ingest.</strong> The remainder of the pipeline (chunking, BM25, top-5 retrieval, answerer) is identical to the baseline.</li>
+          </ul>
+
+          <p>
+            The consolidator is intentionally minimal: ~150 lines of regex, deterministic, single-pass over the haystack at ingest. It is a strict subset of what a production memory system could do at write time.
+          </p>
+
+          <h2>3. Benchmark result</h2>
+
+          <table>
+            <thead>
+              <tr><th>Tier</th><th>Lossless</th><th>LWW-consolidated</th><th>&Delta;</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>mh_6k</code> (&asymp; 26 K chars)</td><td>6.0% (6/100)</td><td><strong>29.0%</strong> (29/100)</td><td><strong>+23.0 pp</strong></td></tr>
+              <tr><td><code>mh_32k</code> (&asymp; 137 K chars)</td><td>8.0% (8/100)</td><td>11.0% (11/100)</td><td>+3.0 pp</td></tr>
+              <tr><td><code>mh_64k</code> (&asymp; 273 K chars)</td><td>8.0% (8/100)</td><td>7.0% (7/100)</td><td>&minus;1.0 pp</td></tr>
+              <tr><td><code>mh_262k</code> (&asymp; 1.1 M chars)</td><td>3.0% (3/100)</td><td>2.0% (2/100)</td><td>&minus;1.0 pp</td></tr>
+              <tr><td><strong>Total (n = 400)</strong></td><td><strong>6.25%</strong> (25/400)</td><td><strong>12.25%</strong> (49/400)</td><td><strong>+6.0 pp</strong></td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            Per-question delta over the 400 shared keys: <strong>39 wins</strong> (LWW correct, lossless wrong), <strong>15 losses</strong> (lossless correct, LWW wrong), <strong>10 both right</strong>, <strong>336 both wrong</strong>. Net wins: +24 absolute.
+          </p>
+
+          <p>Sample wins are textbook prior-chain failures fixed by consolidation:</p>
+
+          <ul>
+            <li><em>&ldquo;Country of origin of the sport that the New Firm is related to&rdquo;</em> &mdash; baseline &rarr; <strong>England</strong>, LWW &rarr; <strong>Japan</strong> (gold).</li>
+            <li><em>&ldquo;Chief of state of the country where Leo Stein has citizenship&rdquo;</em> &mdash; baseline &rarr; <strong>Donald Trump</strong>, LWW &rarr; <strong>Connachta</strong> (gold).</li>
+          </ul>
+
+          <p>
+            Each is a question whose haystack contains both a real-world prior fact and a higher-id counterfactual edit. The lossless pipeline retrieves both and the answerer reverts to the prior; the consolidated pipeline retrieves only the edit. The 15 losses are split between LWW dropping a fact that the question happened to need and LWW driving the model to abstain (<code>"I don't know"</code>) on a question the baseline got partially right.
+          </p>
+
+          <p>
+            The size-tier asymmetry is informative. The win is concentrated at short context, where BM25 top-5 is dense enough that consolidation removes prior-chain leakers from the retrieved set. At very long context (<code>mh_262k</code>), the gold chain often does not enter top-5 in the first place; consolidation cannot rescue a question whose gold facts are never retrieved. We return to this in &sect;5.
+          </p>
+
+          <h2>4. Mechanism: chain coexistence in the prompt</h2>
+
+          <p>
+            To explain <em>why</em> a regex-level consolidator produces this result, we examine one of the failing instances from <code>mh_6k</code>. The question:
+          </p>
+
+          <blockquote>
+            <p><em>&ldquo;What is the place of death of the partner of the head of government of the Council of People&rsquo;s Commissars?&rdquo;</em></p>
+          </blockquote>
+
+          <p>Gold answer: <strong>Mansourah, Algeria</strong>. The composing chain:</p>
+
+          <table>
+            <thead>
+              <tr><th>Hop</th><th>Fact id</th><th>Statement</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>351</td><td>The current head of the Council of People&rsquo;s Commissars government is <strong>Tony Blair</strong>.</td></tr>
+              <tr><td>2</td><td>424</td><td>Tony Blair is married to <strong>Alan Jay Lerner</strong>.</td></tr>
+              <tr><td>3</td><td>394</td><td>Alan Jay Lerner died in the city of <strong>Mansourah, Algeria</strong>.</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            The lossless BM25-RAG pipeline retrieves all three of these into the top-5 chunks (verified by inspection), yet <code>Qwen3-14B</code> answers <strong>&ldquo;Moscow&rdquo;</strong>.
+          </p>
+
+          <p>The reason is that the same haystack contains a parallel, fully self-consistent chain composed of <em>lower-id</em> facts:</p>
+
+          <table>
+            <thead>
+              <tr><th>Hop</th><th>Prior-aligned chain</th><th>Counterfactual chain</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Council head</td><td>fact <strong>324</strong> &mdash; Vladimir Lenin</td><td>fact <strong>351</strong> &mdash; Tony Blair</td></tr>
+              <tr><td>Partner</td><td>fact <strong>422</strong> &mdash; Nadezhda Krupskaya</td><td>fact <strong>424</strong> &mdash; Alan Jay Lerner</td></tr>
+              <tr><td>Place of death</td><td>fact <strong>302</strong> &mdash; Moscow</td><td>fact <strong>394</strong> &mdash; Mansourah, Algeria</td></tr>
+              <tr><td>Implied answer</td><td><strong>Moscow</strong></td><td><strong>Mansourah, Algeria</strong></td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            Both chains are present in the haystack, both are surface-grounded by the same retrievers that surface the gold chain, and only one of them coincides with the model&rsquo;s pretraining priors. The dataset&rsquo;s grader rewards the higher-numbered chain because the dataset construction places gold facts at later ids &mdash; but this convention is nowhere visible to the answerer.
+          </p>
+
+          <p>
+            To verify that <em>chain coexistence</em> &mdash; and not, for example, distractor noise &mdash; is what causes the failure, we run a minimal controlled prompt-construction experiment. Let <code>G = {351, 424, 394}</code> (gold-chain facts), <code>P = {324, 422, 302}</code> (prior-chain facts), and <code>D_n</code> denote a random sample of <code>n</code> facts from the haystack whose text contains none of {Lenin, Krupskaya, Moscow, Tony Blair, Lerner, Mansourah, Algeria, &ldquo;Council of People&rdquo;}. All prompts use the same minimal answerer instruction; decoding is deterministic.
+          </p>
+
+          <table>
+            <thead>
+              <tr><th>#</th><th>Prompt</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>E1</td><td><code>G</code> only (3 facts)</td><td>&#10003; Mansourah, Algeria</td></tr>
+              <tr><td>E2</td><td><code>P</code> only (3 facts)</td><td>Moscow</td></tr>
+              <tr><td>E3</td><td><code>G &cup; P</code> (6 facts), sorted by id</td><td><strong>Moscow</strong></td></tr>
+              <tr><td>E3&prime;</td><td><code>G &cup; P</code>, ordered prior-then-gold</td><td>Moscow</td></tr>
+              <tr><td>E3&Prime;</td><td><code>G &cup; P</code>, ordered gold-then-prior</td><td>Moscow</td></tr>
+              <tr><td>E4</td><td><code>G &cup; D_100</code> (103 facts)</td><td>&#10003; Mansourah, Algeria</td></tr>
+              <tr><td>E5</td><td><code>G &cup; P &cup; D_100</code> (106 facts)</td><td>Moscow</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            E1 establishes the answerer can solve the question end-to-end. E3/E3&prime;/E3&Prime; is the decisive test: with no other content in the prompt at all, <strong>six facts in any of three orderings produce the prior-chain answer</strong>. E4 establishes that 100 chain-irrelevant distractors do not impair the gold-chain answer when only the gold chain is present. E5 shows that adding the prior chain back to E4 immediately re-induces the failure.
+          </p>
+
+          <p>
+            The operative variable is chain coexistence, not noise. When both chains are present in the prompt, the answerer selects between them on the basis of pretraining co-activation. Lenin&ndash;Krupskaya&ndash;Moscow is a single tightly co-activated cluster from pretraining; Tony Blair&ndash;Alan Jay Lerner&ndash;Mansourah is three nearly-disjoint clusters. The chain with stronger co-activation wins, regardless of order.
+          </p>
+
+          <p>
+            Replace-on-write breaks this configuration at the source. The (subject, predicate) LWW consolidator drops fact 324 because 351 supersedes it on <code>(head_of_gov, "Council of People's Commissars")</code>. With 324 gone, the prior chain has no hop-1 anchor; the only hop-1 candidate the retrieved passages contain is Tony Blair. From there, only the gold chain composes &mdash; 422 is about Lenin and 302 is about Krupskaya, neither of whom hop 2 will traverse. The consolidator does not need to reason about chains; it only needs to delete a single line. The &sect;3 benchmark numbers are the empirical consequence: across 400 questions, the LWW consolidator removes enough prior-chain hop-1 leakers to flip 39 question outcomes from wrong to right.
+          </p>
+
+          <h2>5. Discussion</h2>
+
+          <p>
+            <strong>The win is bounded by retrieval, not by the consolidator.</strong> At short context (<code>mh_6k</code>) the BM25 top-5 typically surfaces both chains; consolidation strips the prior chain and leaves the gold chain alone. At very long context (<code>mh_262k</code>), gold facts are often not in the top-5 to begin with, and consolidation cannot rescue what was never retrieved. This decomposition suggests a complementary direction: at large context, retrieval-side improvements (e.g., recency-aware reranking that prefers high-id chunks for templated relations) should compose with LWW. We have not measured this.
+          </p>
+
+          <p>
+            <strong>LWW preserves uncontradicted facts.</strong> A consolidator keyed on (subject, predicate) only drops facts that are <em>directly</em> superseded. True uncontradicted facts about the same entities &mdash; for example, &ldquo;Krupskaya died in Moscow&rdquo; if no higher-id &ldquo;Krupskaya died in&rdquo; fact exists &mdash; are preserved, because they are not errors a memory system should remove on observation. Some questions on the multi-hop set still fail under LWW because their prior-chain alternatives are composed of facts that are individually uncontradicted; only the chain itself, relative to the question&rsquo;s traversal, is &ldquo;stale.&rdquo; Whether this residual gap warrants a more sophisticated consolidator (entity-cascade, relation-typed, LLM-judged) is the natural next study. The simplest possible consolidator already closes most of the gap.
+          </p>
+
+          <h2>6. Related work</h2>
+
+          <ul>
+            <li><strong>Memory-system architectures for agents.</strong> MemGPT<sup><a href="#fn1" id="ref1">1</a></sup> introduces tiered memory with explicit page-in/page-out, but its main memory remains lossless within the working window. Letta<sup><a href="#fn2" id="ref2">2</a></sup> and most production RAG-over-agent-history systems likewise <em>append</em> observations and rely on retrieval at read time. Our result locates the cost of that design choice empirically: a deterministic regex-level write-time consolidator approximately doubles multi-hop counterfactual QA accuracy.</li>
+            <li><strong>Knowledge-conflict surveys and benchmarks.</strong> Xu et al.<sup><a href="#fn3" id="ref3">3</a></sup> distinguish <em>context&ndash;memory</em> and <em>inter-context</em> conflicts. Our setup is technically inter-context, but with the twist that one of the two in-context chains is <em>also</em> parametric-aligned &mdash; a hybrid the survey does not isolate. Longpre et al.<sup><a href="#fn4" id="ref4">4</a></sup> and Wang et al.<sup><a href="#fn5" id="ref5">5</a></sup> study single-fact conflicts; our contribution is the multi-hop chain-vs-chain extension and its connection to the <em>ingest</em> policy of an agentic memory system.</li>
+            <li><strong>Confirmation bias toward priors.</strong> Xie et al.<sup><a href="#fn6" id="ref6">6</a></sup> show that LLMs exhibit confirmation bias when external evidence partially aligns with parametric memory. Our benchmark and case study extend this to the multi-hop setting where the entire <em>chain</em> is split between a prior-aligned set and a counterfactual set, both equally prompt-grounded, and propose write-time consolidation as the architectural remedy.</li>
+            <li><strong>Counterfactual multi-hop reasoning and editing.</strong> Su et al.<sup><a href="#fn7" id="ref7">7</a></sup> study 2-hop reasoning with a single counterfactual edit per question. Zhong et al. (MQuAKE / MeLLo)<sup><a href="#fn8" id="ref8">8</a></sup> propose decomposition as a fix for multi-hop counterfactual editing; IRAKE<sup><a href="#fn9" id="ref9">9</a></sup> refines this. Each of these works addresses the failure at <em>read time</em>. We argue that the architectural locus of repair is the <em>ingest</em> step.</li>
+            <li><strong>More-evidence-hurts phenomenon.</strong> TRACK<sup><a href="#fn10" id="ref10">10</a></sup> shows that providing more updated facts can monotonically degrade reasoning, attributing it to attention/integration faithfulness as the knowledge-aggregation scope grows. Our 6-fact controlled ablation refines this phenomenon: with <em>only</em> the chain facts and no other content, the model still fails. The operative variable is chain coexistence, not fact-set size &mdash; and the architectural fix is not &ldquo;show fewer facts&rdquo; but &ldquo;decide what to retain at write time.&rdquo;</li>
+          </ul>
+
+          <h2>7. Limitations</h2>
+
+          <p>
+            <strong>Templates are dataset-specific; the mechanism is not.</strong> The 28 regex patterns we use to derive <code>(subject, predicate)</code> keys are tailored to FactConsolidation&rsquo;s hand-built vocabulary and would not apply to free-form conversational data. The architectural mechanism &mdash; derive a <code>(subject, predicate)</code> key from each new observation and apply last-write-wins &mdash; is independent of <em>how</em> the keys are extracted; a production memory system over free-form text would replace our regex with an OpenIE model, a fine-tuned tagger, or an LLM extraction call. We have not measured whether the benchmark gain holds when key extraction is itself noisy. (One adjacent variant we <em>did</em> try, <code>conflict_resolved_bm25_rag</code>, used an LLM at ingest to judge whether each new fact contradicts any already-stored fact; it tied the lossless baseline at 6.2% on the same n = 400. We do not generalize from a single null prompt design, but it is suggestive that <em>deterministic, structurally-aligned</em> consolidation is doing the work in our +6 pp gain.) Measuring the architecture under noisy key extraction is the most important untested generalization of the result, and the natural next experiment.
+          </p>
+
+          <p>
+            <strong>Other limitations.</strong> The benchmark result is on one task family (FactConsolidation multi-hop) and one model (<code>Qwen3-14B-Instruct</code>). The size-tier asymmetry of the win &mdash; <code>mh_6k</code> +23 pp, <code>mh_32k</code> +3 pp, <code>mh_64k</code> and <code>mh_262k</code> essentially flat &mdash; points to retrieval-side bottlenecks at long context that consolidation alone cannot address. Even within FactConsolidation, complex relations the 28 templates miss are not consolidated; richer consolidators (entity-resolved, relation-typed, LLM-judged) may close further gaps. The diagnosis assumes explicit fact-recency information (here, integer fact ids); extending it to corpora without recency markers requires an alternative editorial-recency or counterfactual-surprise signal at ingest. Replication on conversational benchmarks (LongMemEval, LoCoMo) where memory updates arise from dialogue is a natural next step we have not yet undertaken.
+          </p>
+
+          <h2>8. Conclusion</h2>
+
+          <p>
+            A 150-line regex consolidator at ingest time approximately <strong>doubles multi-hop FactConsolidation accuracy (6.25% &rarr; 12.25%, n = 400)</strong> over an otherwise-identical lossless RAG pipeline. There is no model retraining, no LLM call at ingest, no read-time prompt change &mdash; just dropping facts that have been superseded.
+          </p>
+
+          <p>
+            The case study explains why. Append-only memory creates a prompt configuration we call <strong>chain coexistence</strong>, in which a prior-aligned and a counterfactual answer chain are both retrieved, both grounded, and the answerer selects on the basis of pretraining co-activation rather than the dataset&rsquo;s intended supersession. A 6-fact controlled ablation isolates this independently of prompt size or order. Write-time consolidation breaks chain coexistence at the source.
+          </p>
+
+          <p>
+            The architectural recommendation is direct: <strong>agentic memory should not be append-only over evolving knowledge.</strong> Replace-on-write at ingest is cheap, deterministic, and produces a measurable benchmark gain. The simplest version of the idea &mdash; drop a fact when a later observation supersedes it on the same (subject, predicate) &mdash; is already enough to flip 39 of 400 questions from wrong to right. The harder problem of consolidating <em>uncontradicted</em> facts that nonetheless become &ldquo;stale&rdquo; relative to a particular query traversal is left to future work, but is a strict superset of the gain demonstrated here.
+          </p>
+
+          <hr style="margin:1.5rem 0; border:none; border-top:1px solid var(--color-border);">
+
+          <p>
+            <em>Reproduction repository: <a href="https://github.com/abouelhamayed/replace-on-write-rag" target="_blank" rel="noopener">github.com/abouelhamayed/replace-on-write-rag</a>. It contains the full pipeline (a self-contained OpenAI-compatible model server, the two RAG adapters, the n = 400 benchmark runner, the per-question comparison script, and the &sect;4 case-study ablation), with reproduction steps in the README.</em>
+          </p>
+
+          <div class="note">
+            Note: Claude Code was used to run experiments and to assist in writing this blog post, under my supervision.
+          </div>
+
+          <div class="footnotes">
+            <h3>References</h3>
+            <ol>
+              <li id="fn1">Packer, C., Wooders, S., Lin, K., Fang, V., Patil, S. G., Stoica, I., &amp; Gonzalez, J. E. (2023). <em>MemGPT: Towards LLMs as Operating Systems.</em> <a href="https://arxiv.org/abs/2310.08560" target="_blank" rel="noopener">arXiv:2310.08560</a> <a href="#ref1">&uarr;</a></li>
+              <li id="fn2">Letta (formerly MemGPT). Open-source agent framework with persistent memory. <a href="https://github.com/letta-ai/letta" target="_blank" rel="noopener">github.com/letta-ai/letta</a> <a href="#ref2">&uarr;</a></li>
+              <li id="fn3">Xu, R., Qi, Z., Guo, Z., Wang, C., Wang, H., Zhang, Y., &amp; Xu, W. (2024). <em>Knowledge Conflicts for LLMs: A Survey.</em> Proceedings of EMNLP 2024. <a href="https://aclanthology.org/2024.emnlp-main.486.pdf" target="_blank" rel="noopener">aclanthology.org/2024.emnlp-main.486</a> <a href="#ref3">&uarr;</a></li>
+              <li id="fn4">Longpre, S., Perisetla, K., Chen, A., Ramesh, N., DuBois, C., &amp; Singh, S. (2021). <em>Entity-Based Knowledge Conflicts in Question Answering.</em> Proceedings of EMNLP 2021. <a href="https://aclanthology.org/2021.emnlp-main.565/" target="_blank" rel="noopener">aclanthology.org/2021.emnlp-main.565</a> <a href="#ref4">&uarr;</a></li>
+              <li id="fn5">Wang, Y., Feng, S., Wang, H., Shi, W., Balachandran, V., He, T., &amp; Tsvetkov, Y. (2023). <em>Resolving Knowledge Conflicts in Large Language Models.</em> <a href="https://arxiv.org/abs/2310.00935" target="_blank" rel="noopener">arXiv:2310.00935</a> <a href="#ref5">&uarr;</a></li>
+              <li id="fn6">Xie, J., Zhang, K., Chen, J., Lou, R., &amp; Su, Y. (2024). <em>Adaptive Chameleon or Stubborn Sloth: Revealing the Behavior of Large Language Models in Knowledge Conflicts.</em> ICLR 2024. <a href="https://arxiv.org/abs/2305.13300" target="_blank" rel="noopener">arXiv:2305.13300</a> <a href="#ref6">&uarr;</a></li>
+              <li id="fn7">Su et al. (2025). <em>Counterfactual Multi-Hop Reasoning with Single-Edit Perturbations.</em> <a href="https://arxiv.org/abs/2506.15732" target="_blank" rel="noopener">arXiv:2506.15732</a> <a href="#ref7">&uarr;</a></li>
+              <li id="fn8">Zhong, Z., Wu, Z., Manning, C. D., Potts, C., &amp; Chen, D. (2023). <em>MQuAKE: Assessing Knowledge Editing in Language Models via Multi-Hop Questions.</em> Proceedings of EMNLP 2023. <a href="https://aclanthology.org/2023.emnlp-main.971.pdf" target="_blank" rel="noopener">aclanthology.org/2023.emnlp-main.971</a> <a href="#ref8">&uarr;</a></li>
+              <li id="fn9">IRAKE (September 2025). <em>Iterative Retrieval-Augmented Knowledge Editing for Multi-Hop Counterfactual Reasoning.</em> <a href="https://arxiv.org/html/2509.07555" target="_blank" rel="noopener">arXiv:2509.07555</a> <a href="#ref9">&uarr;</a></li>
+              <li id="fn10">TRACK (2026). <em>Tracking Reasoning Faithfulness under Knowledge Aggregation.</em> <a href="https://arxiv.org/abs/2601.15495" target="_blank" rel="noopener">arXiv:2601.15495</a> <a href="#ref10">&uarr;</a></li>
+            </ol>
+          </div>
+
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-links">
+        <a href="mailto:afa55@cornell.edu" aria-label="Email"><i class="fas fa-envelope"></i></a>
+        <a href="https://scholar.google.com/citations?user=tzaaYKMAAAAJ&hl=en" target="_blank" rel="noopener" aria-label="Google Scholar"><i class="fas fa-graduation-cap"></i></a>
+        <a href="https://www.linkedin.com/in/aabouelhamayed/" target="_blank" rel="noopener" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+      </div>
+      <p>&copy; 2026 Ahmed F. AbouElhamayed. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="../js/main.js"></script>
+</body>
+</html>
